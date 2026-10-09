@@ -18,15 +18,19 @@ type Profile = {
 
 };
 
+
 type Project = {
   id: string;
   title: string;
   description: string | null;
+  image_url: string | null;
   github_url: string | null;
   demo_url: string | null;
   technologies: string[] | null;
   featured: boolean;
+  display_order?: number | null;
 };
+
 
 type Publication = {
   id: string;
@@ -130,13 +134,12 @@ export default function Home() {
           .limit(1)
           .maybeSingle(),
 
-        supabase
-          .from("projects")
-          .select("*")
-          .eq("featured", true)
-          .order("display_order", {
-            ascending: true,
-          }),
+
+supabase
+  .from("projects")
+  .select("*")
+  .order("display_order", { ascending: true }),
+
 
         supabase
           .from("publications")
@@ -456,7 +459,7 @@ export default function Home() {
       >
         <div className="mb-10">
           <h2 className="text-3xl font-bold">
-            Featured Projects
+             Projects
           </h2>
 
           <p className="mt-2 text-gray-500">
@@ -476,69 +479,97 @@ export default function Home() {
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {projects.map((project) => (
-              <article
-                key={project.id}
-                className="rounded-2xl border p-6 transition hover:-translate-y-1 hover:shadow-lg"
+            
+{projects.map((project) => (
+  <article
+    key={project.id}
+    className="group overflow-hidden rounded-2xl border border-gray-200 bg-white transition duration-300 hover:-translate-y-1 hover:shadow-xl"
+  >
+    {/* Project thumbnail */}
+    <div className="relative aspect-video overflow-hidden bg-gradient-to-br from-gray-100 via-gray-50 to-gray-200">
+      {project.image_url ? (
+        <Image
+          src={project.image_url}
+          alt={`${project.title} project preview`}
+          fill
+          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          className="object-cover transition duration-500 group-hover:scale-105"
+        />
+      ) : (
+        <div className="flex h-full items-center justify-center">
+          <div className="text-center">
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-gray-200 bg-white text-2xl font-bold text-gray-700 shadow-sm">
+              {project.title.charAt(0).toUpperCase()}
+            </div>
+            <p className="px-4 text-sm font-medium text-gray-500">
+              {project.title}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {project.featured && (
+        <span className="absolute left-3 top-3 rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-gray-800 shadow-sm backdrop-blur">
+          Featured
+        </span>
+      )}
+    </div>
+
+    {/* Project details */}
+    <div className="p-6">
+      <h3 className="text-xl font-bold tracking-tight text-gray-900 transition group-hover:text-gray-600">
+        {project.title}
+      </h3>
+
+      <p className="mt-3 whitespace-pre-line text-sm leading-7 text-gray-600">
+        {project.description || "No description available yet."}
+      </p>
+
+      {/* Technology tags */}
+      {project.technologies &&
+        project.technologies.length > 0 && (
+          <div className="mt-5 flex flex-wrap gap-2">
+            {project.technologies.map((technology) => (
+              <span
+                key={technology}
+                className="rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-700"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <h3 className="text-xl font-semibold">
-                    {project.title}
-                  </h3>
-
-                  {project.featured && (
-                    <span className="shrink-0 rounded-full bg-green-100 px-2 py-1 text-xs text-green-700">
-                      Featured
-                    </span>
-                  )}
-                </div>
-
-                <p className="mt-3 leading-7 text-gray-600">
-                  {project.description ||
-                    "No description available."}
-                </p>
-
-                {project.technologies &&
-                  project.technologies.length > 0 && (
-                    <div className="mt-5 flex flex-wrap gap-2">
-                      {project.technologies.map(
-                        (technology) => (
-                          <span
-                            key={technology}
-                            className="rounded-full bg-gray-100 px-3 py-1 text-sm"
-                          >
-                            {technology}
-                          </span>
-                        )
-                      )}
-                    </div>
-                  )}
-
-                <div className="mt-6 flex flex-wrap gap-4">
-                  {project.github_url && (
-                    <a
-                      href={project.github_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm font-medium underline"
-                    >
-                      GitHub →
-                    </a>
-                  )}
-
-                  {project.demo_url && (
-                    <a
-                      href={project.demo_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm font-medium underline"
-                    >
-                      Live Demo →
-                    </a>
-                  )}
-                </div>
-              </article>
+                {technology}
+              </span>
             ))}
+          </div>
+        )}
+
+      {/* Project links */}
+      {(project.github_url || project.demo_url) && (
+        <div className="mt-6 flex flex-wrap gap-3 border-t border-gray-100 pt-5">
+          {project.github_url && (
+            <a
+              href={project.github_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-700"
+            >
+              GitHub <span aria-hidden="true">↗</span>
+            </a>
+          )}
+
+          {project.demo_url && (
+            <a
+              href={project.demo_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-800 transition hover:bg-gray-50"
+            >
+              Live Demo <span aria-hidden="true">↗</span>
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  </article>
+))}
+
           </div>
         )}
       </section>
