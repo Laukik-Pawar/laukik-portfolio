@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -17,7 +18,42 @@ export default function NewEducationPage() {
   const [description, setDescription] = useState("");
   const [displayOrder, setDisplayOrder] = useState("0");
 
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (imagePreview) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
+
+  function handleImageChange(
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+    if (!allowedTypes.includes(file.type)) {
+      alert("Please select a JPG, PNG, or WebP image.");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Image must be 5 MB or smaller.");
+      event.target.value = "";
+      return;
+    }
+
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  }
 
   async function handleSubmit(
     event: React.FormEvent<HTMLFormElement>
@@ -31,26 +67,87 @@ export default function NewEducationPage() {
 
     setSaving(true);
 
-    const { error } = await supabase
-      .from("education")
-      .insert({
-        institution: institution.trim(),
-        degree: degree.trim() || null,
-        field: field.trim() || null,
-        start_date: startDate || null,
-        end_date: endDate || null,
-        description: description.trim() || null,
-        display_order: Number(displayOrder) || 0,
-      });
+    let uploadedImagePath: string | null = null;
+    let imageUrl: string | null = null;
 
-    if (error) {
+    try {
+      // Upload the optional image first.
+      if (imageFile) {
+        const extension = imageFile.name.split(".").pop()?.toLowerCase();
+
+        const safeExtension =
+          extension && ["jpg", "jpeg", "png", "webp"].includes(extension)
+            ? extension
+            : imageFile.type === "image/png"
+              ? "png"
+              : imageFile.type === "image/webp"
+                ? "webp"
+                : "jpg";
+
+        uploadedImagePath = `education/${crypto.randomUUID()}.${safeExtension}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("project-images")
+          .upload(uploadedImagePath, imageFile, {
+            contentType: imageFile.type,
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (uploadError) {
+          throw new Error(`Image upload failed: ${uploadError.message}`);
+        }
+
+        const { data } = supabase.storage
+          .from("project-images")
+          .getPublicUrl(uploadedImagePath);
+
+        imageUrl = data.publicUrl;
+      }
+
+      const { error: insertError } = await supabase
+        .from("education")
+        .insert({
+          institution: institution.trim(),
+          degree: degree.trim() || null,
+          field: field.trim() || null,
+          start_date: startDate || null,
+          end_date: endDate || null,
+          description: description.trim() || null,
+          display_order: Number(displayOrder) || 0,
+          image_url: imageUrl,
+        });
+
+      if (insertError) {
+        // Remove the uploaded image if the database insert fails.
+        if (uploadedImagePath) {
+          const { error: cleanupError } = await supabase.storage
+            .from("project-images")
+            .remove([uploadedImagePath]);
+
+          if (cleanupError) {
+            console.error("Image cleanup failed:", cleanupError);
+          }
+        }
+
+        throw new Error(
+          `Failed to create education: ${insertError.message}`
+        );
+      }
+
+      router.push("/admin/education");
+      router.refresh();
+    } catch (error) {
       console.error(error);
-      alert(`Failed to create education: ${error.message}`);
-      setSaving(false);
-      return;
-    }
 
-    router.push("/admin/education");
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong while saving education."
+      );
+
+      setSaving(false);
+    }
   }
 
   return (
@@ -89,13 +186,62 @@ export default function NewEducationPage() {
               id="institution"
               type="text"
               value={institution}
-              onChange={(event) =>
-                setInstitution(event.target.value)
-              }
+              onChange={(event) => setInstitution(event.target.value)}
               placeholder="Stevens Institute of Technology"
               required
               className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-black"
             />
+          </div>
+
+          <div className="mb-6">
+            <label
+              htmlFor="educationImage"
+              className="mb-2 block text-sm font-medium text-gray-700"
+            >
+              Institution Logo or Image
+            </label>
+
+            <input
+              id="educationImage"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleImageChange}
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm file:mr-4 file:rounded-md file:border-0 file:bg-gray-100 file:px-4 file:py-2 file:font-medium"
+            />
+
+            <p className="mt-2 text-sm text-gray-500">
+              Optional. JPG, PNG, or WebP; maximum 5 MB.
+            </p>
+
+            {imagePreview && (
+              <div className="mt-4">
+                <p className="mb-2 text-sm font-medium text-gray-700">
+                  Image Preview
+                </p>
+
+                <img
+                  src={imagePreview}
+                  alt="Education image preview"
+                  className="h-40 w-40 rounded-xl border border-gray-200 bg-white object-contain p-2"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImageFile(null);
+                    setImagePreview("");
+                    const input = document.getElementById(
+                      "educationImage"
+                    ) as HTMLInputElement | null;
+
+                    if (input) input.value = "";
+                  }}
+                  className="mt-2 block text-sm text-red-600 hover:text-red-800"
+                >
+                  Remove selected image
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="mb-6">
@@ -110,9 +256,7 @@ export default function NewEducationPage() {
               id="degree"
               type="text"
               value={degree}
-              onChange={(event) =>
-                setDegree(event.target.value)
-              }
+              onChange={(event) => setDegree(event.target.value)}
               placeholder="Master of Science"
               className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-black"
             />
@@ -130,9 +274,7 @@ export default function NewEducationPage() {
               id="field"
               type="text"
               value={field}
-              onChange={(event) =>
-                setField(event.target.value)
-              }
+              onChange={(event) => setField(event.target.value)}
               placeholder="Computer Science"
               className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-black"
             />
@@ -151,9 +293,7 @@ export default function NewEducationPage() {
                 id="startDate"
                 type="date"
                 value={startDate}
-                onChange={(event) =>
-                  setStartDate(event.target.value)
-                }
+                onChange={(event) => setStartDate(event.target.value)}
                 className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-black"
               />
             </div>
@@ -170,9 +310,7 @@ export default function NewEducationPage() {
                 id="endDate"
                 type="date"
                 value={endDate}
-                onChange={(event) =>
-                  setEndDate(event.target.value)
-                }
+                onChange={(event) => setEndDate(event.target.value)}
                 className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-black"
               />
             </div>
@@ -189,9 +327,7 @@ export default function NewEducationPage() {
             <textarea
               id="description"
               value={description}
-              onChange={(event) =>
-                setDescription(event.target.value)
-              }
+              onChange={(event) => setDescription(event.target.value)}
               rows={6}
               placeholder="GPA, coursework, achievements, activities, etc."
               className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-black"
@@ -211,9 +347,7 @@ export default function NewEducationPage() {
               type="number"
               min="0"
               value={displayOrder}
-              onChange={(event) =>
-                setDisplayOrder(event.target.value)
-              }
+              onChange={(event) => setDisplayOrder(event.target.value)}
               className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-black"
             />
 

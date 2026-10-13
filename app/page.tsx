@@ -1003,6 +1003,16 @@ supabase
                 GitHub
               </a>
             )}
+                       
+              <a
+                
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-lg border px-6 py-3 transition hover:bg-white"
+              >
+                <span>&#9742;</span> Phone: +1 (551) 248-3855
+              </a>
+            
           </div>
         </div>
       </section>
