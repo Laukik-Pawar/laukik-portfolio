@@ -54,6 +54,7 @@ type Experience = {
   end_date: string | null;
   description: string | null;
   display_order: number | null;
+  image_url: string | null;
 };
 
 type Education = {
@@ -65,6 +66,7 @@ type Education = {
   end_date: string | null;
   description: string | null;
   display_order: number | null;
+  image_url: string | null;
 };
 
 type Skill = {
@@ -82,6 +84,7 @@ type Certification = {
   credential_url: string | null;
   description: string | null;
   display_order: number | null;
+  image_url: string | null;
 };
 
 function formatDate(date: string | null) {
@@ -574,6 +577,7 @@ supabase
         )}
       </section>
 
+      
       {/* Experience */}
       <section
         id="experience"
@@ -601,43 +605,65 @@ supabase
               </p>
             </div>
           ) : (
-            <div className="space-y-8">
+            <div className="space-y-6">
               {experience.map((item) => (
                 <article
                   key={item.id}
-                  className="relative rounded-2xl border bg-white p-6 shadow-sm md:p-8"
+                  className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:shadow-lg"
                 >
-                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                    <div>
-                      <h3 className="text-xl font-bold">
-                        {item.role}
-                      </h3>
-
-                      <p className="mt-1 text-lg font-medium text-gray-700">
-                        {item.company}
-                      </p>
-
-                      {item.location && (
-                        <p className="mt-1 text-sm text-gray-500">
-                          {item.location}
-                        </p>
+                  <div className="flex flex-col sm:flex-row">
+                    {/* Company image or logo */}
+                    <div className="relative flex h-44 shrink-0 items-center justify-center overflow-hidden border-b border-gray-100 bg-gray-50 p-5 sm:h-auto sm:min-h-52 sm:w-52 sm:border-b-0 sm:border-r">
+                      {item.image_url ? (
+                        <Image
+                          src={item.image_url}
+                          alt={`${item.company} logo`}
+                          fill
+                          sizes="(max-width: 640px) 100vw, 208px"
+                          className="object-contain p-5"
+                        />
+                      ) : (
+                        <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-gray-200 bg-white text-2xl font-bold text-gray-500 shadow-sm">
+                          {item.company.charAt(0).toUpperCase()}
+                        </div>
                       )}
                     </div>
 
-                    <div className="shrink-0 rounded-full bg-gray-100 px-4 py-2 text-sm text-gray-600">
-                      {formatDate(item.start_date)}
-                      {" — "}
-                      {item.end_date
-                        ? formatDate(item.end_date)
-                        : "Present"}
+                    {/* Experience details */}
+                    <div className="min-w-0 flex-1 p-6 md:p-8">
+                      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                        <div>
+                          <h3 className="text-xl font-bold">
+                            {item.role}
+                          </h3>
+
+                          <p className="mt-1 text-lg font-medium text-gray-700">
+                            {item.company}
+                          </p>
+
+                          {item.location && (
+                            <p className="mt-1 text-sm text-gray-500">
+                              {item.location}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="shrink-0 self-start rounded-full bg-gray-100 px-4 py-2 text-sm text-gray-600">
+                          {formatDate(item.start_date)}
+                          {" — "}
+                          {item.end_date
+                            ? formatDate(item.end_date)
+                            : "Present"}
+                        </div>
+                      </div>
+
+                      {item.description && (
+                        <p className="mt-6 whitespace-pre-line leading-7 text-gray-600">
+                          {item.description}
+                        </p>
+                      )}
                     </div>
                   </div>
-
-                  {item.description && (
-                    <p className="mt-6 whitespace-pre-line leading-7 text-gray-600">
-                      {item.description}
-                    </p>
-                  )}
                 </article>
               ))}
             </div>
@@ -645,6 +671,8 @@ supabase
         </div>
       </section>
 
+
+      
       {/* Education */}
       <section
         id="education"
@@ -671,44 +699,65 @@ supabase
             {education.map((item) => (
               <article
                 key={item.id}
-                className="rounded-2xl border p-6 transition hover:shadow-lg"
+                className="overflow-hidden rounded-2xl border border-gray-200 bg-white transition duration-300 hover:-translate-y-1 hover:shadow-lg"
               >
-                <h3 className="text-xl font-bold">
-                  {item.institution}
-                </h3>
+                {/* Institution image or logo */}
+                <div className="relative flex h-48 items-center justify-center overflow-hidden border-b border-gray-100 bg-gray-50 p-5">
+                  {item.image_url ? (
+                    <Image
+                      src={item.image_url}
+                      alt={`${item.institution} logo or campus`}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                      className="object-contain p-4"
+                    />
+                  ) : (
+                    <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-gray-200 bg-white text-3xl font-bold text-gray-500 shadow-sm">
+                      {item.institution.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
 
-                {item.degree && (
-                  <p className="mt-3 text-lg font-medium text-gray-700">
-                    {item.degree}
-                  </p>
-                )}
+                {/* Education details */}
+                <div className="p-6">
+                  <h3 className="text-xl font-bold text-gray-900">
+                    {item.institution}
+                  </h3>
 
-                {item.field && (
-                  <p className="mt-1 text-gray-600">
-                    {item.field}
-                  </p>
-                )}
+                  {item.degree && (
+                    <p className="mt-3 text-lg font-medium text-gray-700">
+                      {item.degree}
+                    </p>
+                  )}
 
-                {(item.start_date || item.end_date) && (
-                  <p className="mt-4 text-sm text-gray-500">
-                    {formatDate(item.start_date)}
-                    {" — "}
-                    {item.end_date
-                      ? formatDate(item.end_date)
-                      : "Present"}
-                  </p>
-                )}
+                  {item.field && (
+                    <p className="mt-1 text-gray-600">
+                      {item.field}
+                    </p>
+                  )}
 
-                {item.description && (
-                  <p className="mt-5 whitespace-pre-line leading-7 text-gray-600">
-                    {item.description}
-                  </p>
-                )}
+                  {(item.start_date || item.end_date) && (
+                    <p className="mt-4 text-sm text-gray-500">
+                      {formatDate(item.start_date)}
+                      {" — "}
+                      {item.end_date
+                        ? formatDate(item.end_date)
+                        : "Present"}
+                    </p>
+                  )}
+
+                  {item.description && (
+                    <p className="mt-5 whitespace-pre-line leading-7 text-gray-600">
+                      {item.description}
+                    </p>
+                  )}
+                </div>
               </article>
             ))}
           </div>
         )}
       </section>
+
 
       {/* Skills */}
       <section
@@ -767,6 +816,7 @@ supabase
         </div>
       </section>
 
+      
       {/* Certifications */}
       <section
         id="certifications"
@@ -797,41 +847,56 @@ supabase
             {certifications.map((certification) => (
               <article
                 key={certification.id}
-                className="rounded-2xl border p-6 transition hover:shadow-lg"
+                className="overflow-hidden rounded-2xl border border-gray-200 bg-white transition duration-300 hover:-translate-y-1 hover:shadow-lg"
               >
-                <div className="flex flex-col gap-4">
-                  <div>
-                    <h3 className="text-xl font-bold">
-                      {certification.name}
-                    </h3>
+                {/* Certificate image or issuer logo */}
+                <div className="relative flex h-48 items-center justify-center overflow-hidden border-b border-gray-100 bg-gray-50 p-5">
+                  {certification.image_url ? (
+                    <Image
+                      src={certification.image_url}
+                      alt={`${certification.name} certificate`}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                      className="object-contain p-4"
+                    />
+                  ) : (
+                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-gray-200 bg-white text-2xl font-bold text-gray-500 shadow-sm">
+                      {certification.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
 
-                    {certification.issuer && (
-                      <p className="mt-2 font-medium text-gray-700">
-                        {certification.issuer}
-                      </p>
-                    )}
-                  </div>
+                {/* Certification details */}
+                <div className="p-6">
+                  <h3 className="text-xl font-bold">
+                    {certification.name}
+                  </h3>
+
+                  {certification.issuer && (
+                    <p className="mt-2 font-medium text-gray-700">
+                      {certification.issuer}
+                    </p>
+                  )}
 
                   {certification.issue_date && (
-                    <p className="text-sm text-gray-500">
-                      Issued{" "}
-                      {formatDate(certification.issue_date)}
+                    <p className="mt-3 text-sm text-gray-500">
+                      Issued {formatDate(certification.issue_date)}
                     </p>
                   )}
 
                   {certification.description && (
-                    <p className="leading-7 text-gray-600">
+                    <p className="mt-4 whitespace-pre-line leading-7 text-gray-600">
                       {certification.description}
                     </p>
                   )}
 
                   {certification.credential_url && (
-                    <div>
+                    <div className="mt-5 border-t border-gray-100 pt-4">
                       <a
                         href={certification.credential_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-gray-50"
+                        className="inline-flex rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium transition hover:bg-gray-50"
                       >
                         View Credential →
                       </a>
@@ -843,6 +908,7 @@ supabase
           </div>
         )}
       </section>
+
 
       {/* Publications */}
       <section

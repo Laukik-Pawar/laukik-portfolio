@@ -27,11 +27,19 @@ export default function AdminDashboard() {
     checkUser();
   }, [router, supabase.auth]);
 
-  async function logout() {
-    await supabase.auth.signOut();
-    router.push("/admin/login");
-    router.refresh();
+  
+async function logout() {
+  const { error } = await supabase.auth.signOut();
+
+  if (error) {
+    console.error("Logout failed:", error.message);
+    return;
   }
+
+  router.replace("/admin/login");
+  router.refresh();
+}
+
 
   return (
     <main className="min-h-screen bg-gray-100 p-8">

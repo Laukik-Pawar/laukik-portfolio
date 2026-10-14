@@ -14,13 +14,29 @@ type Experience = {
   end_date: string | null;
   description: string | null;
   display_order: number;
+  image_url: string | null;
 };
+
+const BUCKET = "project-images";
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+function getStoragePath(imageUrl: string | null): string | null {
+  if (!imageUrl) return null;
+
+  const marker = `/${BUCKET}/`;
+  const index = imageUrl.indexOf(marker);
+
+  if (index === -1) return null;
+
+  return imageUrl
+    .slice(index + marker.length)
+    .split("?")[0];
+}
 
 function EditExperienceForm() {
   const supabase = createClient();
   const router = useRouter();
   const params = useParams();
-
   const id = params.id as string;
 
   const [company, setCompany] = useState("");
@@ -30,6 +46,12 @@ function EditExperienceForm() {
   const [endDate, setEndDate] = useState("");
   const [description, setDescription] = useState("");
   const [displayOrder, setDisplayOrder] = useState("0");
+
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [removeImage, setRemoveImage] = useState(false);
+  const [uploadError, setUploadError] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -58,9 +80,8 @@ function EditExperienceForm() {
       setStartDate(experience.start_date || "");
       setEndDate(experience.end_date || "");
       setDescription(experience.description || "");
-      setDisplayOrder(
-        String(experience.display_order ?? 0)
-      );
+      setDisplayOrder(String(experience.display_order ?? 0));
+      setImageUrl(experience.image_url || null);
 
       setLoading(false);
     }
@@ -68,7 +89,54 @@ function EditExperienceForm() {
     if (id) {
       loadExperience();
     }
-  }, [id]);
+  }, [id, router, supabase]);
+
+  // Release temporary browser preview URLs when they change or the page closes.
+  useEffect(() => {
+    return () => {
+      if (imagePreview?.startsWith("blob:")) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
+
+  function handleImageChange(
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+    setUploadError("");
+
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      setUploadError("Please select a JPG, PNG, or WebP image.");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      setUploadError("Image must be 5 MB or smaller.");
+      event.target.value = "";
+      return;
+    }
+
+    setSelectedImage(file);
+    setImagePreview(URL.createObjectURL(file));
+    setRemoveImage(false);
+  }
+
+  function handleRemoveImage() {
+    setSelectedImage(null);
+    setImagePreview(null);
+    setRemoveImage(true);
+    setUploadError("");
+  }
 
   async function handleSubmit(
     event: React.FormEvent<HTMLFormElement>
@@ -86,6 +154,44 @@ function EditExperienceForm() {
     }
 
     setSaving(true);
+    setUploadError("");
+
+    let finalImageUrl = removeImage ? null : imageUrl;
+    let newlyUploadedPath: string | null = null;
+
+    // Upload the selected image only when saving the form.
+    if (selectedImage) {
+      const extensionByType: Record<string, string> = {
+        "image/jpeg": "jpg",
+        "image/png": "png",
+        "image/webp": "webp",
+      };
+
+      const extension = extensionByType[selectedImage.type];
+      const storagePath = `experience/${id}/${crypto.randomUUID()}.${extension}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from(BUCKET)
+        .upload(storagePath, selectedImage, {
+          contentType: selectedImage.type,
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error(uploadError);
+        alert(`Image upload failed: ${uploadError.message}`);
+        setSaving(false);
+        return;
+      }
+
+      newlyUploadedPath = storagePath;
+
+      const { data } = supabase.storage
+        .from(BUCKET)
+        .getPublicUrl(storagePath);
+
+      finalImageUrl = data.publicUrl;
+    }
 
     const { error } = await supabase
       .from("experience")
@@ -97,17 +203,43 @@ function EditExperienceForm() {
         end_date: endDate || null,
         description: description.trim() || null,
         display_order: Number(displayOrder) || 0,
+        image_url: finalImageUrl,
       })
       .eq("id", id);
 
     if (error) {
       console.error(error);
+
+      // Remove the newly uploaded file if the database update fails.
+      if (newlyUploadedPath) {
+        await supabase.storage
+          .from(BUCKET)
+          .remove([newlyUploadedPath]);
+      }
+
       alert(`Failed to update experience: ${error.message}`);
       setSaving(false);
       return;
     }
 
+    // The database now points to the new URL (or no image).
+    // It is safe to remove the previously saved image.
+    if (imageUrl && imageUrl !== finalImageUrl) {
+      const oldPath = getStoragePath(imageUrl);
+
+      if (oldPath) {
+        const { error: cleanupError } = await supabase.storage
+          .from(BUCKET)
+          .remove([oldPath]);
+
+        if (cleanupError) {
+          console.error("Old image cleanup failed:", cleanupError);
+        }
+      }
+    }
+
     router.push("/admin/experience");
+    router.refresh();
   }
 
   async function handleDelete() {
@@ -115,9 +247,7 @@ function EditExperienceForm() {
       "Are you sure you want to permanently delete this experience?"
     );
 
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
     setDeleting(true);
 
@@ -133,20 +263,34 @@ function EditExperienceForm() {
       return;
     }
 
+    // Delete the associated image after the database record is deleted.
+    const imagePath = getStoragePath(imageUrl);
+
+    if (imagePath) {
+      const { error: storageError } = await supabase.storage
+        .from(BUCKET)
+        .remove([imagePath]);
+
+      if (storageError) {
+        console.error("Image cleanup failed:", storageError);
+      }
+    }
+
     router.push("/admin/experience");
+    router.refresh();
   }
 
   if (loading) {
     return (
       <main className="min-h-screen bg-gray-100 p-8">
         <div className="mx-auto max-w-4xl">
-          <p className="text-gray-600">
-            Loading experience...
-          </p>
+          <p className="text-gray-600">Loading experience...</p>
         </div>
       </main>
     );
   }
+
+  const displayedImage = imagePreview || (removeImage ? null : imageUrl);
 
   return (
     <main className="min-h-screen bg-gray-100 p-8">
@@ -159,9 +303,7 @@ function EditExperienceForm() {
             ← Back to Experience
           </Link>
 
-          <h1 className="mt-4 text-3xl font-bold">
-            Edit Experience
-          </h1>
+          <h1 className="mt-4 text-3xl font-bold">Edit Experience</h1>
 
           <p className="mt-1 text-gray-500">
             Update your professional experience.
@@ -184,9 +326,7 @@ function EditExperienceForm() {
               id="company"
               type="text"
               value={company}
-              onChange={(event) =>
-                setCompany(event.target.value)
-              }
+              onChange={(event) => setCompany(event.target.value)}
               required
               className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-black"
             />
@@ -204,12 +344,71 @@ function EditExperienceForm() {
               id="role"
               type="text"
               value={role}
-              onChange={(event) =>
-                setRole(event.target.value)
-              }
+              onChange={(event) => setRole(event.target.value)}
               required
               className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-black"
             />
+          </div>
+
+          {/* Company logo upload */}
+          <div className="mb-6">
+            <label
+              htmlFor="experienceImage"
+              className="mb-2 block text-sm font-medium text-gray-700"
+            >
+              Company Logo / Experience Image
+            </label>
+
+            {displayedImage && (
+              <div className="mb-4">
+                <img
+                  src={displayedImage}
+                  alt="Company logo preview"
+                  className="h-32 w-32 rounded-xl border border-gray-200 bg-white object-contain p-2"
+                />
+                <p className="mt-2 text-xs text-gray-500">
+                  {imagePreview
+                    ? "Preview of the image you selected"
+                    : "Current saved image"}
+                </p>
+              </div>
+            )}
+
+            <input
+              id="experienceImage"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleImageChange}
+              disabled={saving || deleting}
+              className="block w-full text-sm text-gray-700 file:mr-4 file:rounded-lg file:border-0 file:bg-gray-100 file:px-4 file:py-2 file:font-medium hover:file:bg-gray-200"
+            />
+
+            <p className="mt-2 text-sm text-gray-500">
+              JPG, PNG, or WebP. Maximum size: 5 MB.
+            </p>
+
+            {uploadError && (
+              <p className="mt-2 text-sm text-red-600">
+                {uploadError}
+              </p>
+            )}
+
+            {displayedImage && (
+              <button
+                type="button"
+                onClick={handleRemoveImage}
+                disabled={saving || deleting}
+                className="mt-3 rounded-lg border border-red-200 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+              >
+                Remove Image
+              </button>
+            )}
+
+            {removeImage && (
+              <p className="mt-2 text-sm text-amber-700">
+                The image will be removed when you save your changes.
+              </p>
+            )}
           </div>
 
           <div className="mb-6">
@@ -224,9 +423,7 @@ function EditExperienceForm() {
               id="location"
               type="text"
               value={location}
-              onChange={(event) =>
-                setLocation(event.target.value)
-              }
+              onChange={(event) => setLocation(event.target.value)}
               placeholder="Mumbai, India"
               className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-black"
             />
@@ -245,9 +442,7 @@ function EditExperienceForm() {
                 id="startDate"
                 type="date"
                 value={startDate}
-                onChange={(event) =>
-                  setStartDate(event.target.value)
-                }
+                onChange={(event) => setStartDate(event.target.value)}
                 className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-black"
               />
             </div>
@@ -264,9 +459,7 @@ function EditExperienceForm() {
                 id="endDate"
                 type="date"
                 value={endDate}
-                onChange={(event) =>
-                  setEndDate(event.target.value)
-                }
+                onChange={(event) => setEndDate(event.target.value)}
                 className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-black"
               />
 
@@ -287,9 +480,7 @@ function EditExperienceForm() {
             <textarea
               id="description"
               value={description}
-              onChange={(event) =>
-                setDescription(event.target.value)
-              }
+              onChange={(event) => setDescription(event.target.value)}
               rows={8}
               placeholder="Describe your responsibilities and achievements..."
               className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-black"
@@ -309,9 +500,7 @@ function EditExperienceForm() {
               type="number"
               min="0"
               value={displayOrder}
-              onChange={(event) =>
-                setDisplayOrder(event.target.value)
-              }
+              onChange={(event) => setDisplayOrder(event.target.value)}
               className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-black"
             />
 
@@ -359,9 +548,7 @@ export default function EditExperiencePage() {
       fallback={
         <main className="min-h-screen bg-gray-100 p-8">
           <div className="mx-auto max-w-4xl">
-            <p className="text-gray-600">
-              Loading experience...
-            </p>
+            <p className="text-gray-600">Loading experience...</p>
           </div>
         </main>
       }
