@@ -1,4 +1,15 @@
+
+import type { Metadata } from "next";
 import Sidebar from "./components/Sidebar";
+
+export const metadata: Metadata = {
+  title: "Admin",
+  robots: {
+    index: false,
+    follow: false,
+    noarchive: true,
+  },
+};
 
 export default function AdminLayout({
   children,
