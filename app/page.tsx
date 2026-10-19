@@ -1,9 +1,13 @@
-"use client";
+// "use client";
 
-import { useEffect, useState } from "react";
+// import { useEffect, useState } from "react";
+// import Link from "next/link";
+// import { createClient } from "@/lib/supabase/client";
+// import Image from "next/image";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import Image from "next/image";
+import { createClient } from "@/lib/supabase/server";
+import PersonSchema from "@/app/components/PersonSchema";
 
 type Profile = {
   name: string;
@@ -105,146 +109,88 @@ function formatPublicationDate(date: string | null) {
   });
 }
 
-export default function Home() {
-  const supabase = createClient();
 
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [publications, setPublications] = useState<Publication[]>([]);
-  const [experience, setExperience] = useState<Experience[]>([]);
-  const [education, setEducation] = useState<Education[]>([]);
-  const [skills, setSkills] = useState<Skill[]>([]);
-  const [certifications, setCertifications] = useState<Certification[]>(
-    []
-  );
+export default async function Home() {
+  const supabase = await createClient();
 
-  const [loading, setLoading] = useState(true);
+  const [
+    profileResult,
+    projectsResult,
+    publicationsResult,
+    experienceResult,
+    educationResult,
+    skillsResult,
+    certificationsResult,
+  ] = await Promise.all([
+    supabase.from("profiles").select("*").limit(1).maybeSingle(),
 
-  useEffect(() => {
-    async function loadPortfolio() {
-      const [
-        profileResult,
-        projectsResult,
-        publicationsResult,
-        experienceResult,
-        educationResult,
-        skillsResult,
-        certificationsResult,
-      ] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("*")
-          .limit(1)
-          .maybeSingle(),
+    supabase
+      .from("projects")
+      .select("*")
+      .order("display_order", { ascending: true }),
 
+    supabase
+      .from("publications")
+      .select("*")
+      .order("display_order", { ascending: true })
+      .order("publication_date", { ascending: false }),
 
-supabase
-  .from("projects")
-  .select("*")
-  .order("display_order", { ascending: true }),
+    supabase
+      .from("experience")
+      .select("*")
+      .order("display_order", { ascending: true })
+      .order("start_date", { ascending: false }),
 
+    supabase
+      .from("education")
+      .select("*")
+      .order("display_order", { ascending: true })
+      .order("start_date", { ascending: false }),
 
-        supabase
-          .from("publications")
-          .select("*")
-          .order("display_order", {
-            ascending: true,
-          })
-          .order("publication_date", {
-            ascending: false,
-          }),
+    supabase
+      .from("skills")
+      .select("*")
+      .order("display_order", { ascending: true }),
 
-        supabase
-          .from("experience")
-          .select("*")
-          .order("display_order", {
-            ascending: true,
-          })
-          .order("start_date", {
-            ascending: false,
-          }),
+    supabase
+      .from("certifications")
+      .select("*")
+      .order("display_order", { ascending: true })
+      .order("issue_date", { ascending: false }),
+  ]);
 
-        supabase
-          .from("education")
-          .select("*")
-          .order("display_order", {
-            ascending: true,
-          })
-          .order("start_date", {
-            ascending: false,
-          }),
+  if (
+    profileResult.error ||
+    projectsResult.error ||
+    publicationsResult.error ||
+    experienceResult.error ||
+    educationResult.error ||
+    skillsResult.error ||
+    certificationsResult.error
+  ) {
+    console.error("Error loading portfolio data", {
+      profile: profileResult.error,
+      projects: projectsResult.error,
+      publications: publicationsResult.error,
+      experience: experienceResult.error,
+      education: educationResult.error,
+      skills: skillsResult.error,
+      certifications: certificationsResult.error,
+    });
+  }
 
-        supabase
-          .from("skills")
-          .select("*")
-          .order("display_order", {
-            ascending: true,
-          }),
+  const profile = (profileResult.data as Profile | null) ?? null;
+  const projects = (projectsResult.data as Project[] | null) ?? [];
+  const publications =
+    (publicationsResult.data as Publication[] | null) ?? [];
+  const experience =
+    (experienceResult.data as Experience[] | null) ?? [];
+  const education =
+    (educationResult.data as Education[] | null) ?? [];
+  const skills = (skillsResult.data as Skill[] | null) ?? [];
+  const certifications =
+    (certificationsResult.data as Certification[] | null) ?? [];
 
-        supabase
-          .from("certifications")
-          .select("*")
-          .order("display_order", {
-            ascending: true,
-          })
-          .order("issue_date", {
-            ascending: false,
-          }),
-      ]);
-
-      if (profileResult.error) {
-        console.error("Profile error:", profileResult.error);
-      }
-
-      if (projectsResult.error) {
-        console.error("Projects error:", projectsResult.error);
-      }
-
-      if (publicationsResult.error) {
-        console.error(
-          "Publications error:",
-          publicationsResult.error
-        );
-      }
-
-      if (experienceResult.error) {
-        console.error(
-          "Experience error:",
-          experienceResult.error
-        );
-      }
-
-      if (educationResult.error) {
-        console.error(
-          "Education error:",
-          educationResult.error
-        );
-      }
-
-      if (skillsResult.error) {
-        console.error("Skills error:", skillsResult.error);
-      }
-
-      if (certificationsResult.error) {
-        console.error(
-          "Certifications error:",
-          certificationsResult.error
-        );
-      }
-
-      setProfile(profileResult.data);
-      setProjects(projectsResult.data || []);
-      setPublications(publicationsResult.data || []);
-      setExperience(experienceResult.data || []);
-      setEducation(educationResult.data || []);
-      setSkills(skillsResult.data || []);
-      setCertifications(certificationsResult.data || []);
-
-      setLoading(false);
-    }
-
-    loadPortfolio();
-  }, []);
 
   const groupedSkills = skills.reduce(
     (groups: Record<string, Skill[]>, skill) => {
@@ -261,16 +207,22 @@ supabase
     {}
   );
 
-  if (loading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-white">
-        <p className="text-gray-500">Loading portfolio...</p>
-      </main>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <main className="flex min-h-screen items-center justify-center bg-white">
+  //       <p className="text-gray-500">Loading portfolio...</p>
+  //     </main>
+  //   );
+  // }
 
   return (
     <main className="min-h-screen bg-white text-gray-900">
+      <PersonSchema
+        siteUrl={
+          process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+        }
+      />
+
       {/* Navigation */}
       <nav className="sticky top-0 z-50 border-b bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">

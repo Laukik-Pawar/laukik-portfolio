@@ -23,7 +23,10 @@ export const metadata: Metadata = {
   },
   description:
     "Explore Laukik Pawar's software, data engineering, cloud, and machine learning projects, technical skills, experience, and certifications.",
-  applicationName: "Laukik Pawar Portfolio",
+  alternates: {
+  canonical: "/",
+},
+    applicationName: "Laukik Pawar Portfolio",
   authors: [{ name: "Laukik Pawar" }],
   openGraph: {
     type: "website",
