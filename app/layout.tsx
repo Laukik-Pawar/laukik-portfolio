@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+    process.env.NEXT_PUBLIC_SITE_URL || "https://laukik-portfolio-nine.vercel.app"
   ),
   title: {
     default: "Laukik Pawar | Computer Science Graduate Student",

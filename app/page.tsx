@@ -219,7 +219,7 @@ export default async function Home() {
     <main className="min-h-screen bg-white text-gray-900">
       <PersonSchema
         siteUrl={
-          process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+          process.env.NEXT_PUBLIC_SITE_URL || "https://laukik-portfolio-nine.vercel.app"
         }
       />
 
