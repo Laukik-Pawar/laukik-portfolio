@@ -7,6 +7,7 @@ type Profile = {
   id?: string;
   name: string;
   headline: string;
+  subtitle: string;
   bio: string;
   location: string;
   email: string;
@@ -19,6 +20,7 @@ type Profile = {
 const emptyProfile: Profile = {
   name: "",
   headline: "",
+  subtitle: "",
   bio: "",
   location: "",
   email: "",
@@ -61,6 +63,7 @@ export default function ProfileAdminPage() {
           id: data.id,
           name: data.name || "",
           headline: data.headline || "",
+          subtitle: data.subtitle || "",
           bio: data.bio || "",
           location: data.location || "",
           email: data.email || "",
@@ -161,6 +164,7 @@ export default function ProfileAdminPage() {
       const profileData = {
         name: profile.name,
         headline: profile.headline || null,
+        subtitle: profile.subtitle || null,
         bio: profile.bio || null,
         location: profile.location || null,
         email: profile.email || null,
@@ -331,7 +335,28 @@ export default function ProfileAdminPage() {
                 className="w-full rounded-lg border px-4 py-3 outline-none focus:border-black"
               />
             </div>
+<div>
+  <label
+    htmlFor="subtitle"
+    className="mb-2 block text-sm font-medium"
+  >
+    Hero Subtitle
+  </label>
 
+  <textarea
+    id="subtitle"
+    name="subtitle"
+    value={profile.subtitle}
+    onChange={handleChange}
+    rows={3}
+    placeholder="MS Computer Science student at Stevens Institute of Technology, building data-driven applications, AI-powered tools, and cloud-based solutions."
+    className="w-full rounded-lg border px-4 py-3 outline-none focus:border-black"
+  />
+
+  <p className="mt-2 text-xs text-gray-500">
+    Displayed below your headline in the homepage hero section.
+  </p>
+</div>
             <div>
               <label
                 htmlFor="bio"

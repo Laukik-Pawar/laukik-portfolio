@@ -456,30 +456,51 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* ───────── About ───────── */}
-      <section id="about" className="scroll-mt-24 grain">
-        <div className="mx-auto max-w-7xl px-6 py-24 md:py-32">
-          <SectionHeading index="01" eyebrow="Introduction" title="A little about me." />
-          <div className="grid gap-12 md:grid-cols-[2fr_1fr] md:gap-16">
-            <div>
-              <p className="font-serif text-2xl leading-relaxed text-slate-800 md:text-3xl">
-                {profile?.bio ||
-                  "I am a Computer Science graduate student interested in building reliable software, data platforms, machine learning systems, and cloud infrastructure."}
-              </p>
-            </div>
-            {profile?.location && (
-              <div className="flex flex-col justify-end gap-4 border-l border-slate-300 pl-6">
-                <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-slate-500">
-                  Based in
-                </p>
-                <p className="font-serif text-2xl text-slate-900">
-                  {profile.location}
-                </p>
-              </div>
-            )}
-          </div>
+      
+{/* ───────── About ───────── */}
+<section id="about" className="scroll-mt-24 grain">
+  <div className="mx-auto max-w-7xl px-6 py-24 md:py-32">
+    <SectionHeading
+      index="01"
+      eyebrow="Introduction"
+      title="A little about me."
+    />
+
+    <div className="grid gap-12 md:grid-cols-[2fr_1fr] md:gap-16">
+      <div className="max-w-3xl">
+        {(profile?.bio ||
+          "I am a Computer Science graduate student interested in building reliable software, data platforms, machine learning systems, and cloud infrastructure."
+        )
+          .replace(/\r\n/g, "\n")
+          .trim()
+          .split(/\n\s*\n/)
+          .filter((paragraph) => paragraph.trim().length > 0)
+          .map((paragraph, index) => (
+            <p
+              key={index}
+              className={`font-serif text-xl leading-8 text-slate-700 md:text-2xl md:leading-9 ${
+                index > 0 ? "mt-5" : ""
+              }`}
+            >
+              {paragraph.trim()}
+            </p>
+          ))}
+      </div>
+
+      {profile?.location && (
+        <div className="flex flex-col justify-end gap-4 border-l border-slate-300 pl-6">
+          <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-slate-500">
+            Based in
+          </p>
+          <p className="font-serif text-2xl text-slate-900">
+            {profile.location}
+          </p>
         </div>
-      </section>
+      )}
+    </div>
+  </div>
+</section>
+
 
       {/* ───────── Projects ───────── */}
       <section
