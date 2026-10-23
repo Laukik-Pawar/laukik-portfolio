@@ -6,6 +6,7 @@ import PersonSchema from "@/app/components/PersonSchema";
 type Profile = {
   name: string;
   headline: string | null;
+  subtitle: string | null;
   bio: string | null;
   location: string | null;
   email: string | null;
@@ -356,7 +357,7 @@ export default async function Home() {
               </h1>
 
               {/* Headline */}
-              <p className="mt-8 max-w-xl font-serif text-xl leading-relaxed text-slate-300 md:text-2xl">
+              {/* <p className="mt-8 max-w-xl font-serif text-xl leading-relaxed text-slate-300 md:text-2xl">
                 {profile?.headline ||
                   "Computer Science Graduate Student | Data & Cloud"}
               </p>
@@ -364,8 +365,19 @@ export default async function Home() {
               <p className="mt-4 max-w-xl text-base leading-7 text-slate-400">
                 {profile?.bio ||
                   "I build data-driven applications, machine learning systems, and cloud-based solutions."}
-              </p>
+              </p> */}
+{/* Headline */}
+<p className="mt-8 max-w-xl font-serif text-xl leading-relaxed text-slate-300 md:text-2xl">
+  {profile?.headline ||
+    "Building Intelligent Systems with Data, AI & Cloud."}
+</p>
 
+{/* Admin-editable Subtitle */}
+{profile?.subtitle && (
+  <p className="mt-4 max-w-xl text-base leading-7 text-slate-400 md:text-lg">
+    {profile.subtitle}
+  </p>
+)}
               {/* CTAs */}
               <div className="mt-10 flex flex-wrap items-center gap-4">
                 <a
