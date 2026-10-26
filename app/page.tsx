@@ -83,6 +83,19 @@ type Certification = {
   image_url: string | null;
 };
 
+type ExtracurricularActivity = {
+  id: string;
+  title: string;
+  organization: string | null;
+  role: string | null;
+  description: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  image_url: string | null;
+  activity_url: string | null;
+  display_order: number;
+};
+
 function formatDate(date: string | null) {
   if (!date) return "";
   return new Date(date).toLocaleDateString("en-US", {
@@ -104,6 +117,7 @@ const NAV_LINKS: [string, string][] = [
   ["Projects", "#projects"],
   ["Experience", "#experience"],
   ["Education", "#education"],
+  ["Activities", "#extracurricular"],
   ["Skills", "#skills"],
   ["Certifications", "#certifications"],
   ["Publications", "#publications"],
@@ -171,6 +185,8 @@ export default async function Home() {
     educationResult,
     skillsResult,
     certificationsResult,
+    extracurricularResult,
+
   ] = await Promise.all([
     supabase.from("profiles").select("*").limit(1).maybeSingle(),
     supabase.from("projects").select("*").order("display_order", { ascending: true }),
@@ -195,6 +211,10 @@ export default async function Home() {
       .select("*")
       .order("display_order", { ascending: true })
       .order("issue_date", { ascending: false }),
+      supabase
+  .from("extracurricular_activities")
+  .select("*")
+  .order("display_order", { ascending: true }),
   ]);
 
   if (
@@ -204,7 +224,8 @@ export default async function Home() {
     experienceResult.error ||
     educationResult.error ||
     skillsResult.error ||
-    certificationsResult.error
+    certificationsResult.error ||
+        extracurricularResult.error
   ) {
     console.error("Error loading portfolio data", {
       profile: profileResult.error,
@@ -214,6 +235,7 @@ export default async function Home() {
       education: educationResult.error,
       skills: skillsResult.error,
       certifications: certificationsResult.error,
+            extracurricular: extracurricularResult.error,
     });
   }
 
@@ -224,7 +246,8 @@ export default async function Home() {
   const education = (educationResult.data as Education[] | null) ?? [];
   const skills = (skillsResult.data as Skill[] | null) ?? [];
   const certifications = (certificationsResult.data as Certification[] | null) ?? [];
-
+  const extracurricularActivities =
+    (extracurricularResult.data as ExtracurricularActivity[] | null) ?? [];
   const groupedSkills = skills.reduce(
     (groups: Record<string, Skill[]>, skill) => {
       const category = skill.category || "Other";
@@ -763,11 +786,109 @@ export default async function Home() {
         </div>
       </section>
 
+      
+      {/* ───────── Extracurricular Activities ───────── */}
+      <section
+        id="extracurricular"
+        className="scroll-mt-24 border-y border-slate-900/5 bg-white"
+      >
+        <div className="mx-auto max-w-7xl px-6 py-24 md:py-32">
+          <SectionHeading
+            index="05"
+            eyebrow="Beyond academics"
+            title="Leadership & involvement."
+            subtitle="Extracurricular activities, leadership roles, and communities I've been part of."
+          />
+
+          {extracurricularActivities.length === 0 ? (
+            <EmptyState text="No extracurricular activities added yet." />
+          ) : (
+            <div className="grid gap-8 md:grid-cols-2">
+              {extracurricularActivities.map((activity) => (
+                <article
+                  key={activity.id}
+                  className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white transition duration-300 hover:-translate-y-1 hover:border-amber-300 hover:shadow-xl motion-reduce:transform-none"
+                >
+                  {/* Image area — same as Education / Certifications */}
+                  <div className="relative flex h-40 items-center justify-center border-b border-slate-100 bg-gradient-to-br from-slate-50 to-amber-50/60">
+                    {activity.image_url ? (
+                      <Image
+                        src={activity.image_url}
+                        alt={`${activity.title} activity image`}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 50vw"
+                        className="object-contain p-6"
+                      />
+                    ) : (
+                      <span className="font-serif text-5xl italic text-slate-300">
+                        {activity.title.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex flex-1 flex-col p-6 md:p-8">
+                    {(activity.start_date || activity.end_date) && (
+                      <p className="font-mono text-[11px] uppercase tracking-widest text-slate-500">
+                        {activity.start_date
+                          ? formatDate(activity.start_date)
+                          : "Date not specified"}
+                        {" — "}
+                        {activity.end_date
+                          ? formatDate(activity.end_date)
+                          : "Present"}
+                      </p>
+                    )}
+
+                    <h3 className="mt-2 font-serif text-2xl tracking-tight text-slate-900">
+                      {activity.title}
+                    </h3>
+
+                    {activity.role && (
+                      <p className="mt-2 text-sm font-medium text-amber-700">
+                        {activity.role}
+                      </p>
+                    )}
+
+                    {activity.organization && (
+                      <p className="mt-1 text-sm text-slate-600">
+                        {activity.organization}
+                      </p>
+                    )}
+
+                    {activity.description && (
+                      <p className="mt-4 whitespace-pre-line border-t border-slate-100 pt-4 text-sm leading-7 text-slate-600">
+                        {activity.description}
+                      </p>
+                    )}
+
+                    {activity.activity_url && (
+                      <div className="mt-auto pt-5">
+                        <a
+                          href={activity.activity_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-900 transition hover:text-amber-700"
+                        >
+                          Learn more
+                          <span aria-hidden="true">→</span>
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+
       {/* ───────── Skills ───────── */}
       <section id="skills" className="scroll-mt-24">
         <div className="mx-auto max-w-7xl px-6 py-24 md:py-32">
           <SectionHeading
-            index="05"
+            index="06"
             eyebrow="Technical toolkit"
             title="What I work with."
             subtitle="Technologies and tools I use to build data, software, machine learning, and cloud solutions."
@@ -814,7 +935,7 @@ export default async function Home() {
       >
         <div className="mx-auto max-w-7xl px-6 py-24 md:py-32">
           <SectionHeading
-            index="06"
+            index="07"
             eyebrow="Credentials"
             title="Certifications."
             subtitle="Professional certifications and credentials."
@@ -888,7 +1009,7 @@ export default async function Home() {
       <section id="publications" className="scroll-mt-24">
         <div className="mx-auto max-w-7xl px-6 py-24 md:py-32">
           <SectionHeading
-            index="07"
+            index="08"
             eyebrow="Research"
             title="Publications."
             subtitle="Research papers, technical publications, and academic work."
@@ -993,7 +1114,7 @@ export default async function Home() {
 
           <div className="relative mx-auto max-w-3xl text-center">
             <p className="font-mono text-[11px] uppercase tracking-[0.4em] text-amber-300">
-              08 — Contact
+              09 — Contact
             </p>
             <h2 className="mt-6 font-serif text-5xl tracking-tight md:text-7xl">
               Let&apos;s build something{" "}

@@ -86,15 +86,26 @@ async function logout() {
             description="Manage your education"
           />
 
+
           <DashboardCard
             title="Certifications"
             description="Manage certifications"
           />
 
-          <DashboardCard
-            title="Profile"
-            description="Manage your personal information"
-          />
+          <a href="/admin/extracurricular">
+            <DashboardCard
+              title="Extracurricular Activities"
+              description="Manage leadership, clubs, and campus involvement"
+            />
+          </a>
+
+          <a href="/admin/profile">
+            <DashboardCard
+              title="Profile"
+              description="Manage your personal information"
+            />
+          </a>
+
         </div>
       </div>
     </main>
