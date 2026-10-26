@@ -23,6 +23,7 @@ export default function ExtracurricularPage() {
 
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
 
   const loadActivities = useCallback(async () => {
@@ -58,6 +59,45 @@ export default function ExtracurricularPage() {
   useEffect(() => {
     void loadActivities();
   }, [loadActivities]);
+
+
+  
+  async function deleteActivity(id: string) {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this extracurricular activity?"
+    );
+
+    if (!confirmed) return;
+
+    setDeletingId(id);
+    setErrorMessage("");
+
+    const { error, data } = await supabase
+      .from("extracurricular_activities")
+      .delete()
+      .eq("id", id)
+      .select("id");
+
+    if (error) {
+      window.alert(`Failed to delete activity: ${error.message}`);
+      setDeletingId(null);
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      window.alert(
+        "The activity was not deleted. Check your Supabase DELETE policy."
+      );
+      setDeletingId(null);
+      return;
+    }
+
+    setActivities((current) =>
+      current.filter((activity) => activity.id !== id)
+    );
+
+    setDeletingId(null);
+  }
 
   function formatDateRange(start: string | null, end: string | null) {
     const format = (date: string) =>
@@ -180,14 +220,25 @@ export default function ExtracurricularPage() {
                     )}
                   </div>
 
-                  <div className="flex shrink-0 items-start">
-                    <Link
-                      href={`/admin/extracurricular/${activity.id}`}
-                      className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                    >
-                      Edit
-                    </Link>
-                  </div>
+
+<div className="flex shrink-0 items-start gap-3">
+  <Link
+    href={`/admin/extracurricular/${activity.id}`}
+    className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+  >
+    Edit
+  </Link>
+
+  <button
+    type="button"
+    onClick={() => deleteActivity(activity.id)}
+    disabled={deletingId === activity.id}
+    className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+  >
+    {deletingId === activity.id ? "Deleting..." : "Delete"}
+  </button>
+</div>
+
                 </div>
               </article>
             ))}

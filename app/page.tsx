@@ -885,7 +885,7 @@ export default async function Home() {
 
 
       {/* ───────── Skills ───────── */}
-      <section id="skills" className="scroll-mt-24">
+      <section id="skills" className="scroll-mt-24 ">
         <div className="mx-auto max-w-7xl px-6 py-24 md:py-32">
           <SectionHeading
             index="06"
@@ -1007,7 +1007,7 @@ export default async function Home() {
 
       {/* ───────── Publications ───────── */}
       <section id="publications" className="scroll-mt-24">
-        <div className="mx-auto max-w-7xl px-6 py-24 md:py-32">
+        <div className="mx-auto max-w-7xl px-6 py-24 md:py-32 ">
           <SectionHeading
             index="08"
             eyebrow="Research"
